@@ -1,0 +1,612 @@
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, Users, Filter, ChefHat, Zap, Heart, CheckCircle, Printer } from 'lucide-react';
+
+const KetoBreakfastPlanner = () => {
+  const [selectedRecipes, setSelectedRecipes] = useState({});
+  const [weeklyPlan, setWeeklyPlan] = useState({});
+  const [preferences, setPreferences] = useState({
+    prepTime: 'any',
+    servings: '1',
+    dietary: [],
+    ingredients: []
+  });
+  const [activeTab, setActiveTab] = useState('planner');
+  const [showNutrition, setShowNutrition] = useState(false);
+
+  const recipes = [
+    {
+      id: 1,
+      name: "Spinach & Cheese Omelet",
+      calories: 320,
+      fat: 26,
+      netCarbs: 3,
+      protein: 18,
+      prepTime: 10,
+      difficulty: "Easy",
+      ingredients: ["eggs", "spinach", "cheese", "butter"],
+      dietary: ["vegetarian"],
+      description: "A classic, satisfying way to start your day—packed with protein and healthy fats."
+    },
+    {
+      id: 2,
+      name: "Greek Yogurt Parfait",
+      calories: 250,
+      fat: 20,
+      netCarbs: 5,
+      protein: 15,
+      prepTime: 5,
+      difficulty: "Easy",
+      ingredients: ["greek yogurt", "nuts", "berries", "chia seeds"],
+      dietary: ["vegetarian", "gluten-free"],
+      description: "Creamy, tangy, and loaded with healthy fats—skip the sugary granola!"
+    },
+    {
+      id: 3,
+      name: "Almond Flour Pancakes",
+      calories: 350,
+      fat: 28,
+      netCarbs: 6,
+      protein: 12,
+      prepTime: 15,
+      difficulty: "Medium",
+      ingredients: ["almond flour", "eggs", "almond milk", "butter"],
+      dietary: ["vegetarian", "gluten-free"],
+      description: "Fluffy, golden, and totally keto-friendly—no one will miss the carbs!"
+    },
+    {
+      id: 4,
+      name: "Chia Seed Pudding",
+      calories: 200,
+      fat: 15,
+      netCarbs: 4,
+      protein: 6,
+      prepTime: 5,
+      difficulty: "Easy",
+      ingredients: ["chia seeds", "coconut milk", "vanilla"],
+      dietary: ["vegan", "dairy-free", "gluten-free"],
+      description: "A make-ahead breakfast that's creamy, filling, and loaded with fiber."
+    },
+    {
+      id: 5,
+      name: "Avocado Egg Boats",
+      calories: 300,
+      fat: 25,
+      netCarbs: 3,
+      protein: 12,
+      prepTime: 20,
+      difficulty: "Easy",
+      ingredients: ["avocado", "eggs", "spices"],
+      dietary: ["vegetarian", "gluten-free"],
+      description: "Creamy avocado meets perfectly baked egg—what's not to love?"
+    },
+    {
+      id: 6,
+      name: "Turkey Sausage Patties",
+      calories: 180,
+      fat: 12,
+      netCarbs: 1,
+      protein: 15,
+      prepTime: 15,
+      difficulty: "Easy",
+      ingredients: ["ground turkey", "herbs", "spices"],
+      dietary: ["gluten-free"],
+      description: "Skip the store-bought stuff—homemade turkey sausage is easy and delicious."
+    },
+    {
+      id: 7,
+      name: "Veggie Frittata",
+      calories: 280,
+      fat: 22,
+      netCarbs: 4,
+      protein: 16,
+      prepTime: 25,
+      difficulty: "Medium",
+      ingredients: ["eggs", "vegetables", "cheese", "olive oil"],
+      dietary: ["vegetarian", "gluten-free"],
+      description: "A frittata is like a crustless quiche—super versatile and meal-prep friendly."
+    },
+    {
+      id: 8,
+      name: "Smoked Salmon & Avocado Plate",
+      calories: 320,
+      fat: 24,
+      netCarbs: 4,
+      protein: 18,
+      prepTime: 5,
+      difficulty: "Easy",
+      ingredients: ["smoked salmon", "avocado", "cream cheese", "capers"],
+      dietary: ["gluten-free"],
+      description: "A no-cook breakfast that feels fancy and keeps you full."
+    }
+  ];
+
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  const filteredRecipes = recipes.filter(recipe => {
+    const matchesPrepTime = preferences.prepTime === 'any' || 
+      (preferences.prepTime === 'quick' && recipe.prepTime <= 10) ||
+      (preferences.prepTime === 'medium' && recipe.prepTime <= 20) ||
+      (preferences.prepTime === 'long' && recipe.prepTime > 20);
+
+    const matchesDietary = preferences.dietary.length === 0 || 
+      preferences.dietary.every(diet => recipe.dietary.includes(diet));
+
+    const matchesIngredients = preferences.ingredients.length === 0 ||
+      preferences.ingredients.some(ing => recipe.ingredients.includes(ing));
+
+    return matchesPrepTime && matchesDietary && matchesIngredients;
+  });
+
+  const addToWeeklyPlan = (day, recipe) => {
+    setWeeklyPlan(prev => ({
+      ...prev,
+      [day]: recipe
+    }));
+  };
+
+  const removeFromWeeklyPlan = (day) => {
+    setWeeklyPlan(prev => {
+      const newPlan = { ...prev };
+      delete newPlan[day];
+      return newPlan;
+    });
+  };
+
+  const calculateWeeklyNutrition = () => {
+    const plannedRecipes = Object.values(weeklyPlan);
+    if (plannedRecipes.length === 0) return { calories: 0, fat: 0, netCarbs: 0, protein: 0 };
+
+    return plannedRecipes.reduce((total, recipe) => ({
+      calories: total.calories + recipe.calories,
+      fat: total.fat + recipe.fat,
+      netCarbs: total.netCarbs + recipe.netCarbs,
+      protein: total.protein + recipe.protein
+    }), { calories: 0, fat: 0, netCarbs: 0, protein: 0 });
+  };
+
+  const weeklyNutrition = calculateWeeklyNutrition();
+  const dailyAverage = {
+    calories: Math.round(weeklyNutrition.calories / Math.max(Object.keys(weeklyPlan).length, 1)),
+    fat: Math.round(weeklyNutrition.fat / Math.max(Object.keys(weeklyPlan).length, 1)),
+    netCarbs: Math.round(weeklyNutrition.netCarbs / Math.max(Object.keys(weeklyPlan).length, 1)),
+    protein: Math.round(weeklyNutrition.protein / Math.max(Object.keys(weeklyPlan).length, 1))
+  };
+
+  const handlePrint = () => {
+    const plannedRecipes = Object.entries(weeklyPlan);
+    if (plannedRecipes.length === 0) {
+      alert('Please add some recipes to your weekly plan before printing!');
+      return;
+    }
+
+    // Create print content
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>My Keto Breakfast Plan</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #059669; padding-bottom: 20px; }
+          .header h1 { color: #059669; margin: 0; font-size: 28px; }
+          .header p { color: #6b7280; margin: 5px 0; }
+          .nutrition-summary { background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+          .nutrition-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+          .nutrition-item { text-align: center; padding: 10px; background: white; border-radius: 6px; }
+          .nutrition-value { font-size: 20px; font-weight: bold; color: #059669; }
+          .nutrition-label { font-size: 12px; color: #6b7280; }
+          .weekly-plan { margin-bottom: 30px; }
+          .day-plan { margin-bottom: 20px; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px; }
+          .day-name { font-weight: bold; color: #374151; font-size: 16px; margin-bottom: 8px; }
+          .recipe-name { color: #059669; font-weight: 600; font-size: 14px; }
+          .recipe-details { color: #6b7280; font-size: 12px; margin-top: 4px; }
+          .ingredients-section { margin-top: 30px; }
+          .ingredients-list { columns: 2; column-gap: 30px; }
+          .ingredients-list li { margin-bottom: 5px; break-inside: avoid; }
+          @media print { body { margin: 10px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🥑 My Keto Breakfast Plan</h1>
+          <p>Generated on ${new Date().toLocaleDateString()}</p>
+          <p>${Object.keys(weeklyPlan).length} days planned</p>
+        </div>
+
+        <div class="nutrition-summary">
+          <h2 style="margin-top: 0; color: #374151;">Daily Average Nutrition</h2>
+          <div class="nutrition-grid">
+            <div class="nutrition-item">
+              <div class="nutrition-value">${dailyAverage.calories}</div>
+              <div class="nutrition-label">Calories</div>
+            </div>
+            <div class="nutrition-item">
+              <div class="nutrition-value">${dailyAverage.fat}g</div>
+              <div class="nutrition-label">Fat</div>
+            </div>
+            <div class="nutrition-item">
+              <div class="nutrition-value">${dailyAverage.netCarbs}g</div>
+              <div class="nutrition-label">Net Carbs</div>
+            </div>
+            <div class="nutrition-item">
+              <div class="nutrition-value">${dailyAverage.protein}g</div>
+              <div class="nutrition-label">Protein</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="weekly-plan">
+          <h2 style="color: #374151;">Weekly Schedule</h2>
+          ${plannedRecipes.map(([day, recipe]) => `
+            <div class="day-plan">
+              <div class="day-name">${day}</div>
+              <div class="recipe-name">${recipe.name}</div>
+              <div class="recipe-details">
+                ⏱️ ${recipe.prepTime} minutes | 
+                🔥 ${recipe.calories} calories | 
+                🥑 ${recipe.netCarbs}g net carbs | 
+                💪 ${recipe.protein}g protein
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="ingredients-section">
+          <h2 style="color: #374151;">Shopping List - Key Ingredients</h2>
+          <ul class="ingredients-list">
+            ${[...new Set(plannedRecipes.flatMap(([day, recipe]) => recipe.ingredients))].sort().map(ingredient => 
+              `<li>${ingredient.charAt(0).toUpperCase() + ingredient.slice(1)}</li>`
+            ).join('')}
+          </ul>
+        </div>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+          <p>Created with Keto Breakfast Planner | Keep this handy for your weekly meal prep!</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open print window
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto p-4 bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <ChefHat className="h-8 w-8" />
+            <h1 className="text-3xl font-bold">Keto Breakfast Planner</h1>
+          </div>
+          <p className="text-green-100 text-lg">Plan your perfect week of keto breakfasts with nutrition tracking</p>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200">
+          <nav className="flex">
+            <button
+              onClick={() => setActiveTab('planner')}
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'planner' 
+                  ? 'border-green-500 text-green-600 bg-green-50' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Calendar className="inline h-4 w-4 mr-2" />
+              Weekly Planner
+            </button>
+            <button
+              onClick={() => setActiveTab('recipes')}
+              className={`px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'recipes' 
+                  ? 'border-green-500 text-green-600 bg-green-50' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Filter className="inline h-4 w-4 mr-2" />
+              Recipe Browser
+            </button>
+          </nav>
+        </div>
+
+        <div className="p-6">
+          {activeTab === 'planner' && (
+            <div className="space-y-6">
+              {/* Nutrition Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-6 border border-blue-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    <Heart className="h-5 w-5 text-red-500" />
+                    Weekly Nutrition Overview
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handlePrint}
+                      disabled={Object.keys(weeklyPlan).length === 0}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                        Object.keys(weeklyPlan).length === 0
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-green-600 text-white hover:bg-green-700 shadow-sm hover:shadow'
+                      }`}
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print Plan
+                    </button>
+                    <button
+                      onClick={() => setShowNutrition(!showNutrition)}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {showNutrition ? 'Hide Details' : 'Show Details'}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-orange-600">{dailyAverage.calories}</div>
+                    <div className="text-sm text-gray-600">Avg Calories/Day</div>
+                  </div>
+                  <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-green-600">{dailyAverage.fat}g</div>
+                    <div className="text-sm text-gray-600">Avg Fat/Day</div>
+                  </div>
+                  <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-blue-600">{dailyAverage.netCarbs}g</div>
+                    <div className="text-sm text-gray-600">Avg Net Carbs/Day</div>
+                  </div>
+                  <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                    <div className="text-2xl font-bold text-purple-600">{dailyAverage.protein}g</div>
+                    <div className="text-sm text-gray-600">Avg Protein/Day</div>
+                  </div>
+                </div>
+
+                {showNutrition && (
+                  <div className="mt-4 p-4 bg-white rounded-lg">
+                    <h3 className="font-medium text-gray-700 mb-2">Weekly Totals</h3>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div>Total Calories: {weeklyNutrition.calories}</div>
+                      <div>Total Fat: {weeklyNutrition.fat}g</div>
+                      <div>Total Net Carbs: {weeklyNutrition.netCarbs}g</div>
+                      <div>Total Protein: {weeklyNutrition.protein}g</div>
+                      <div className="mt-2 text-xs text-green-600">
+                        ✓ Perfect for keto: Keeping carbs low and fats high!
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Weekly Calendar */}
+              <div className="grid gap-4">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-500" />
+                  Your Weekly Breakfast Plan
+                </h2>
+                
+                <div className="grid gap-3">
+                  {daysOfWeek.map(day => (
+                    <div key={day} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-800 mb-1">{day}</h3>
+                          {weeklyPlan[day] ? (
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-green-700">{weeklyPlan[day].name}</div>
+                                <div className="text-sm text-gray-600 flex items-center gap-4">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {weeklyPlan[day].prepTime} min
+                                  </span>
+                                  <span>{weeklyPlan[day].calories} cal</span>
+                                  <span>{weeklyPlan[day].netCarbs}g net carbs</span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => removeFromWeeklyPlan(day)}
+                                className="text-red-500 hover:text-red-700 text-sm font-medium px-3 py-1 rounded hover:bg-red-50 transition-colors"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-gray-500 text-sm">No breakfast planned</div>
+                          )}
+                        </div>
+                        
+                        {!weeklyPlan[day] && (
+                          <select
+                            onChange={(e) => {
+                              const recipe = recipes.find(r => r.id === parseInt(e.target.value));
+                              if (recipe) addToWeeklyPlan(day, recipe);
+                            }}
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          >
+                            <option value="">Choose recipe...</option>
+                            {filteredRecipes.map(recipe => (
+                              <option key={recipe.id} value={recipe.id}>
+                                {recipe.name} ({recipe.prepTime} min)
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'recipes' && (
+            <div className="space-y-6">
+              {/* Filters */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-blue-500" />
+                  Filter Recipes
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Prep Time</label>
+                    <select
+                      value={preferences.prepTime}
+                      onChange={(e) => setPreferences(prev => ({ ...prev, prepTime: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="any">Any time</option>
+                      <option value="quick">Quick (≤10 min)</option>
+                      <option value="medium">Medium (≤20 min)</option>
+                      <option value="long">Longer (>20 min)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Dietary Preferences</label>
+                    <div className="space-y-2">
+                      {['vegetarian', 'vegan', 'dairy-free', 'gluten-free'].map(diet => (
+                        <label key={diet} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={preferences.dietary.includes(diet)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setPreferences(prev => ({ ...prev, dietary: [...prev.dietary, diet] }));
+                              } else {
+                                setPreferences(prev => ({ ...prev, dietary: prev.dietary.filter(d => d !== diet) }));
+                              }
+                            }}
+                            className="mr-2 text-green-600 focus:ring-green-500"
+                          />
+                          <span className="text-sm capitalize">{diet.replace('-', ' ')}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Key Ingredients</label>
+                    <div className="space-y-2">
+                      {['eggs', 'cheese', 'avocado', 'nuts', 'berries'].map(ingredient => (
+                        <label key={ingredient} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={preferences.ingredients.includes(ingredient)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setPreferences(prev => ({ ...prev, ingredients: [...prev.ingredients, ingredient] }));
+                              } else {
+                                setPreferences(prev => ({ ...prev, ingredients: prev.ingredients.filter(i => i !== ingredient) }));
+                              }
+                            }}
+                            className="mr-2 text-green-600 focus:ring-green-500"
+                          />
+                          <span className="text-sm capitalize">{ingredient}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-end">
+                    <button
+                      onClick={() => setPreferences({ prepTime: 'any', servings: '1', dietary: [], ingredients: [] })}
+                      className="w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recipe Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRecipes.map(recipe => (
+                  <div key={recipe.id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-gray-800 leading-tight">{recipe.name}</h3>
+                        <div className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                          <Zap className="h-3 w-3" />
+                          {recipe.difficulty}
+                        </div>
+                      </div>
+                      
+                      <p className="text-gray-600 text-sm mb-4 leading-relaxed">{recipe.description}</p>
+                      
+                      <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                        <div className="bg-orange-50 p-2 rounded-lg text-center">
+                          <div className="font-semibold text-orange-700">{recipe.calories}</div>
+                          <div className="text-orange-600 text-xs">Calories</div>
+                        </div>
+                        <div className="bg-blue-50 p-2 rounded-lg text-center">
+                          <div className="font-semibold text-blue-700">{recipe.netCarbs}g</div>
+                          <div className="text-blue-600 text-xs">Net Carbs</div>
+                        </div>
+                        <div className="bg-green-50 p-2 rounded-lg text-center">
+                          <div className="font-semibold text-green-700">{recipe.fat}g</div>
+                          <div className="text-green-600 text-xs">Fat</div>
+                        </div>
+                        <div className="bg-purple-50 p-2 rounded-lg text-center">
+                          <div className="font-semibold text-purple-700">{recipe.protein}g</div>
+                          <div className="text-purple-600 text-xs">Protein</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-1 text-gray-500 text-sm">
+                          <Clock className="h-4 w-4" />
+                          {recipe.prepTime} minutes
+                        </div>
+                        <div className="flex gap-1">
+                          {recipe.dietary.map(diet => (
+                            <span key={diet} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                              {diet}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              addToWeeklyPlan(e.target.value, recipe);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                        >
+                          <option value="">Add to day...</option>
+                          {daysOfWeek.map(day => (
+                            <option key={day} value={day} disabled={weeklyPlan[day]}>
+                              {day} {weeklyPlan[day] ? '(planned)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {filteredRecipes.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 text-lg mb-2">No recipes match your filters</div>
+                  <div className="text-gray-500 text-sm">Try adjusting your preferences to see more options</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default KetoBreakfastPlanner;
